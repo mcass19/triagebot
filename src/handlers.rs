@@ -44,6 +44,7 @@ mod review_submitted;
 mod rfc_helper;
 mod rustc_commits;
 mod shortcut;
+mod decision;
 
 pub async fn handle(ctx: &Context, event: &Event) -> Vec<HandlerError> {
     let config = config::get(&ctx.github, event.repo()).await;
@@ -274,6 +275,7 @@ command_handlers! {
     shortcut: Shortcut,
     close: Close,
     note: Note,
+    decision: Decision,
 }
 
 pub struct Context {
