@@ -4,6 +4,7 @@ use postgres_native_tls::MakeTlsConnector;
 use std::sync::{Arc, Mutex};
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use tokio_postgres::Client as DbClient;
+use crate::db::events::get_events_to_execute;
 
 pub mod events;
 pub mod issue_data;
@@ -176,6 +177,13 @@ pub async fn run_migrations(client: &DbClient) -> anyhow::Result<()> {
                 .with_context(|| format!("updating migration counter to {}", idx))?;
         }
     }
+
+    Ok(())
+}
+
+pub async fn run_scheduled_events(db: &DbClient) -> anyhow::Result<()> {
+    let res = get_events_to_execute(&db).await;
+    println!("events to execute: {:#?}", res);
 
     Ok(())
 }
