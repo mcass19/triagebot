@@ -14,6 +14,8 @@ use triagebot::{db, github, handlers::Context, notification_listing, payload, Ev
 use std::{time::Duration, thread};
 use tokio::task;
 
+const JOB_PROCESSING_CADENCE_IN_SECS: u64 = 60;
+
 async fn handle_agenda_request(req: String) -> anyhow::Result<String> {
     if req == "/agenda/lang/triage" {
         return triagebot::agenda::lang().call().await;
@@ -239,15 +241,17 @@ async fn run_server(addr: SocketAddr) -> anyhow::Result<()> {
         .await
         .context("database migrations")?;  
 
+    // spawning a background task that will run the scheduled jobs
+    // every JOB_PROCESSING_CADENCE_IN_SECS
     task::spawn(async move {
         let pool = db::ClientPool::new();
 
-        loop {
-            thread::sleep(Duration::from_secs(60)); // every one minute
-
-            db::run_scheduled_events(&*pool.get().await)
+        loop { 
+            db::run_scheduled_jobs(&*pool.get().await)
                 .await
-                .context("database scheduled_events").unwrap(); 
+                .context("run database scheduled jobs").unwrap(); 
+
+            thread::sleep(Duration::from_secs(JOB_PROCESSING_CADENCE_IN_SECS));
         }
     });
 
