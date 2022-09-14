@@ -5,10 +5,11 @@ use parser::command::decision::Resolution::*;
 use std::collections::HashMap;
 
 /// Applies a command to the current state and returns the next state
-pub fn handle_command(
-    state: Option<State>,
-    command: DecisionCommand,
-    context: Context,
+pub(super) async fn handle_command(
+    ctx: &Context,
+    _config: &DecisionConfig,
+    event: &Event,
+    cmd: DecisionCommand,
 ) -> Result<State, Error> {
     let DecisionCommand {
         user,

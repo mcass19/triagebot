@@ -14,6 +14,7 @@ use std::fmt;
 
 /// A command as parsed and received from calling the bot with some arguments,
 /// like `@rustbot merge`
+#[derive(PartialEq, Eq, Debug)]
 pub struct DecisionCommand {
     user: String,
     disposition: Resolution,
