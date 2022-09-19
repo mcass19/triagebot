@@ -248,7 +248,7 @@ CREATE TABLE issue_data (
 ",
     "
 CREATE TABLE jobs (
-    id UUID PRIMARY KEY,
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     name TEXT NOT NULL,
     expected_time TIMESTAMP WITH TIME ZONE NOT NULL,
     metadata JSONB,
@@ -256,4 +256,10 @@ CREATE TABLE jobs (
     error_message TEXT
 );
 ",
+    "
+CREATE UNIQUE INDEX jobs_name_expected_time_unique_index 
+    ON jobs (
+        name, expected_time
+    );
+"
 ];

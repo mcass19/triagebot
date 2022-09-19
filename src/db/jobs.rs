@@ -15,12 +15,18 @@ pub struct Job {
     pub error_message: Option<String>,
 }
 
-pub async fn insert_job(db: &DbClient, job: &Job) -> Result<()> {
-    tracing::trace!("insert_job(id={})", job.id);
+pub async fn insert_job(
+    db: &DbClient, 
+    name: &String,
+    expected_time: &DateTime<FixedOffset>,
+    metadata: &serde_json::Value
+) -> Result<()> {
+    tracing::trace!("insert_job(name={})", name);
     
     db.execute(
-        "INSERT INTO jobs (id, name, expected_time, metadata, executed_at, error_message) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING",
-        &[&job.id, &job.name, &job.expected_time, &job.metadata, &job.executed_at, &job.error_message],
+        "INSERT INTO jobs (name, expected_time, metadata) VALUES ($1, $2, $3) 
+            ON CONFLICT (name, expected_time) DO UPDATE SET metadata = EXCLUDED.metadata",
+        &[&name, &expected_time, &metadata],
     )
     .await
     .context("Inserting job")?;
@@ -70,7 +76,6 @@ pub async fn update_job_executed_at(db: &DbClient, id: &Uuid) -> Result<()> {
 // Selects all jobs with:
 //  - expected_time in the past 
 //  - error_message is null or executed_at is at least 60 minutes ago (intended to make repeat executions rare enough)
-
 pub async fn get_jobs_to_execute(db: &DbClient) -> Result<Vec<Job>>  {
     let jobs = db
         .query(

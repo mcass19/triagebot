@@ -2,10 +2,9 @@
 // In case you want to add a new one, just add a new clause to the match with 
 // the job name and the corresponding function.
 
-// The metadata is a serde_json::Value, please visit: https://docs.rs/serde_json/latest/serde_json/value/enum.Value.html
-// to refer on how to get values from there.
-// Example of accessing an integer id in the metadata:
-//    metadata["id"].as_i64().unwrap();
+// The metadata is a serde_json::Value
+// Please refer to https://docs.rs/serde_json/latest/serde_json/value/fn.from_value.html
+// on how to interpret it as an instance of type T, implementing Deserialize.
 
 pub async fn handle_job(name: &String, metadata: &serde_json::Value) -> anyhow::Result<()> {
     match name {
