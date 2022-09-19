@@ -40,6 +40,7 @@ cynic = { version = "0.14" }
 itertools = "0.10.2"
 tower = { version = "0.4.13", features = ["util", "limit", "buffer", "load-shed"] }
 github-graphql = { path = "github-graphql" }
+postgres-types = { version = "0.2.4", features = ["derive"] }
 
 [dependencies.serde]
 version = "1"
