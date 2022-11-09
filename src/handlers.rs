@@ -26,6 +26,7 @@ impl fmt::Display for HandlerError {
 mod assign;
 mod autolabel;
 mod close;
+mod decision;
 mod github_releases;
 mod glacier;
 pub mod jobs;
@@ -44,7 +45,6 @@ mod review_submitted;
 mod rfc_helper;
 mod rustc_commits;
 mod shortcut;
-mod decision;
 
 pub async fn handle(ctx: &Context, event: &Event) -> Vec<HandlerError> {
     let config = config::get(&ctx.github, event.repo()).await;
