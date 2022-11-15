@@ -1,14 +1,11 @@
-use anyhow::Context as Ctx;
-use parser::command::decision::{DecisionCommand, ParseError};
 use crate::{
-    config::DecisionConfig,
-    github::{self, Event},
-    handlers::Context,
+    config::DecisionConfig, db::issue_decision_state::*, github::Event, handlers::Context,
     interactions::ErrorComment,
-    db::decision_state::*
 };
-use std::collections::HashMap;
-use chrono::{DateTime, Duration, Utc};
+use anyhow::Context as Ctx;
+use chrono::{DateTime, Duration, FixedOffset};
+use parser::command::decision::{DecisionCommand, Resolution::*, Reversibility::*};
+use std::collections::BTreeMap;
 
 // get state for issue_id from db
 // if no state (first call)
@@ -28,89 +25,100 @@ pub(super) async fn handle_command(
     event: &Event,
     cmd: DecisionCommand,
 ) -> anyhow::Result<()> {
+    let db = ctx.db.get().await;
+
     let DecisionCommand {
         resolution,
-        reversibility
+        reversibility,
     } = cmd;
 
     let issue = event.issue().unwrap();
+    let user = event.user();
 
-    let is_team_member = event
-        .user()
-        .is_team_member(&ctx.github)
-        .await
-        .unwrap_or(false);
+    let is_team_member = user.is_team_member(&ctx.github).await.unwrap_or(false);
 
     if !is_team_member {
-        let cmnt = ErrorComment::new(&issue, "Only team members can be part of the decision process.");
+        let cmnt = ErrorComment::new(
+            &issue,
+            "Only team members can be part of the decision process.",
+        );
         cmnt.post(&ctx.github).await?;
         return Ok(());
     }
 
-    match get_decision_state(issue.id) {
-        Some(state) => {
+    match get_issue_decision_state(&db, &issue.number).await {
+        Ok(_state) => {
             // let name = match disposition {
             //     Hold => "hold".into(),
             //     Custom(name) => name,
             // };
-    
+
             // let mut current_statuses = state.current_statuses;
             // let mut status_history = state.status_history;
-    
+
             // if let Some(entry) = current_statuses.get_mut(&user) {
             //     let past = status_history.entry(user).or_insert(Vec::new());
-    
+
             //     past.push(entry.clone());
-    
+
             //     *entry = UserStatus::new(name, issue_id, comment_id);
             // } else {
             //     current_statuses.insert(user, UserStatus::new("hold".into(), issue_id, comment_id));
             // }
-    
+
             // Ok(State {
             //     current_statuses,
             //     status_history,
             //     ..state
             // })
-            Ok();
-        },
-        None => {
+            Ok(())
+        }
+        _ => {
             match resolution {
-                Hold => Err(ParseError::InvalidFirstCommand),
+                Hold => Ok(()), // change me!
                 Merge => {
-                    let start_date = chrono::Utc::now().into();
-                    let end_date = start_date.checked_add_signed(Duration::days(10)).unwrap();
+                    let start_date: DateTime<FixedOffset> = chrono::Utc::now().into();
+                    let end_date: DateTime<FixedOffset> =
+                        start_date.checked_add_signed(Duration::days(10)).unwrap();
 
-                    let current_statuses = HashMap::new();
-                    let status_history = HashMap::new();
-
-                    let team = github::get_team(&ctx.github, &"T-lang"); // change this to be configurable in toml?
-
-                    insert_decision_state(
-                        db,
-                        issue.id,
-                        user.login,
-                        start_date,
-                        end_date,
-                        current_statuses,
-                        status_history,
-                        reversibility,
-                        resolution,
+                    let mut current: BTreeMap<String, UserStatus> = BTreeMap::new();
+                    current.insert(
+                        "mcass19".to_string(),
+                        UserStatus {
+                            comment_id: "comment_id".to_string(),
+                            text: "something".to_string(),
+                            reversibility: Reversible,
+                            resolution: Merge,
+                        },
                     );
+                    let history: BTreeMap<String, Vec<UserStatus>> = BTreeMap::new();
+
+                    insert_issue_decision_state(
+                        &db,
+                        &issue.number,
+                        &user.login,
+                        &start_date,
+                        &end_date,
+                        &current,
+                        &history,
+                        &reversibility,
+                        &Merge,
+                    )
+                    .await?;
+
+                    // let team = github::get_team(&ctx.github, &"T-lang"); // change this to be configurable in toml?
 
                     let comment = format!(
-                        "Wow, it looks like you want to merge this, {}.", event.user().login
+                        "Wow, it looks like you want to merge this, {}.\n| Team member | State |\n|-------------|-------|\n| julmontesdeoca | merge |\n| mcass19 |  |",
+                        user.login
                     );
-                
-                    let comment = format!(
-                        "| Team member | State |\n|-------------|-------|\n| julmontesdeoca | merge |\n| mcass19 |  |");
-                
+
                     issue
                         .post_comment(&ctx.github, &comment)
                         .await
                         .context("merge vote comment")?;
 
-                    Ok();
+                    Ok(())
                 }
             }
         }
