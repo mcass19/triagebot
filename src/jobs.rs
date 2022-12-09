@@ -45,7 +45,15 @@ pub const JOB_PROCESSING_CADENCE_IN_SECS: u64 = 60;
 
 pub fn jobs() -> Vec<JobSchedule> {
     // Add to this vector any new cron task you want (as explained above)
-    let jobs: Vec<JobSchedule> = Vec::new();
+    let mut jobs: Vec<JobSchedule> = Vec::new();
+    jobs.push(crate::handlers::docs_update::job());
+    jobs.push(crate::handlers::rustc_commits::job());
 
     jobs
+}
+
+#[test]
+fn jobs_defined() {
+    // Checks we don't panic here, mostly for the schedule parsing.
+    drop(jobs());
 }

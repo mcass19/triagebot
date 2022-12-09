@@ -9,10 +9,20 @@ use crate::handlers::decision::{DecisionProcessActionMetadata, DECISION_PROCESS_
 use parser::command::decision::Resolution::Merge;
 use reqwest::Client;
 use tracing as log;
+use super::Context;
 
-pub async fn handle_job(name: &String, metadata: &serde_json::Value) -> anyhow::Result<()> {
-    match name {
-        matched_name if *matched_name == DECISION_PROCESS_JOB_NAME.to_string() => {
+pub async fn handle_job(
+    ctx: &Context,
+    name: &String,
+    metadata: &serde_json::Value,
+) -> anyhow::Result<()> {
+    match name.as_str() {
+        "docs_update" => super::docs_update::handle_job().await,
+        "rustc_commits" => {
+            super::rustc_commits::synchronize_commits_inner(ctx, None).await;
+            Ok(())
+        },
+        DECISION_PROCESS_JOB_NAME => {
             decision_process_handler(&metadata).await
         }
         _ => default(&name, &metadata),
