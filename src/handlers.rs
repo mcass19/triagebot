@@ -27,7 +27,6 @@ mod assign;
 mod autolabel;
 mod close;
 mod decision;
-pub mod docs_update;
 mod github_releases;
 mod glacier;
 pub mod jobs;
@@ -44,7 +43,7 @@ mod prioritize;
 mod relabel;
 mod review_submitted;
 mod rfc_helper;
-pub mod rustc_commits;
+mod rustc_commits;
 mod shortcut;
 
 pub async fn handle(ctx: &Context, event: &Event) -> Vec<HandlerError> {
