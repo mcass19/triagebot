@@ -30,7 +30,6 @@ pub(super) async fn handle_command(
 
     let DecisionCommand {
         resolution,
-        reversibility,
         team: team_name,
     } = cmd;
 
@@ -93,7 +92,6 @@ pub(super) async fn handle_command(
                                 Some(UserStatus {
                                     comment_id: event.html_url().unwrap().to_string(),
                                     text: event.comment_body().unwrap().to_string(),
-                                    reversibility: reversibility,
                                     resolution: resolution,
                                 }),
                             );
@@ -108,18 +106,24 @@ pub(super) async fn handle_command(
                                 &end_date,
                                 &current,
                                 &history,
-                                &reversibility,
-                                &resolution,
+                                &IssueDecisionStateData {
+                                    resolution: resolution,
+                                },
                             )
                             .await?;
 
                             // TO DO -- Do not insert this job until we support more votes
-                            // let metadata = serde_json::value::to_value(DecisionProcessActionMetadata {
-                            //     message: "some message".to_string(),
-                            //     get_issue_url: format!("{}/issues/{}", issue.repository().url(), issue.number),
-                            //     status: resolution,
-                            // })
-                            // .unwrap();
+                            // let metadata =
+                            //     serde_json::value::to_value(DecisionProcessActionMetadata {
+                            //         message: "some message".to_string(),
+                            //         get_issue_url: format!(
+                            //             "{}/issues/{}",
+                            //             issue.repository().url(),
+                            //             issue.number
+                            //         ),
+                            //         status: resolution,
+                            //     })
+                            //     .unwrap();
                             // insert_job(
                             //     &db,
                             //     &DECISION_PROCESS_JOB_NAME.to_string(),
@@ -194,7 +198,6 @@ mod tests {
         default {
             comment_id = "https://some-comment-id-for-merge.com".to_string(),
             text = "this is my argument for making this decision".to_string(),
-            reversibility = Reversibility::Reversible,
             resolution = Resolution::Merge
         }
 

@@ -275,19 +275,13 @@ CREATE UNIQUE INDEX jobs_name_scheduled_at_unique_index
     );
 ",
     "
-CREATE TYPE reversibility AS ENUM ('reversible', 'irreversible');
-",
-    "
-CREATE TYPE resolution AS ENUM ('hold', 'merge', 'close');
-",
-    "CREATE TABLE issue_decision_state (
+CREATE TABLE issue_decision_state (
     issue_id BIGINT PRIMARY KEY,
     initiator TEXT NOT NULL,
     start_date TIMESTAMP WITH TIME ZONE NOT NULL,
     end_date TIMESTAMP WITH TIME ZONE NOT NULL,
     current JSONB NOT NULL,
     history JSONB,
-    reversibility reversibility NOT NULL DEFAULT 'reversible',
-    resolution resolution NOT NULL DEFAULT 'merge'
+    data JSONB NOT NULL
 );",
 ];
