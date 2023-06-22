@@ -74,6 +74,7 @@ pub(super) async fn handle_command(
                     match github::get_team(&ctx.github, &team_name).await {
                         Ok(Some(team)) => {
                             let start_date: DateTime<Utc> = chrono::Utc::now().into();
+                            // adding 10 days always, but we may want to differentiate between merge/hold etc
                             let end_date: DateTime<Utc> =
                                 start_date.checked_add_signed(Duration::days(10)).unwrap();
 
