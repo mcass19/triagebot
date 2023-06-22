@@ -278,7 +278,7 @@ CREATE UNIQUE INDEX jobs_name_scheduled_at_unique_index
 CREATE TYPE reversibility AS ENUM ('reversible', 'irreversible');
 ",
     "
-CREATE TYPE resolution AS ENUM ('hold', 'merge');
+CREATE TYPE resolution AS ENUM ('hold', 'merge', 'close');
 ",
     "CREATE TABLE issue_decision_state (
     issue_id BIGINT PRIMARY KEY,

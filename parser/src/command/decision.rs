@@ -65,6 +65,21 @@ impl DecisionCommand {
                     },
                 )
             }
+            Some(Token::Word("close")) => {
+                toks.next_token()?;
+
+                let team: Option<String> = get_team(&mut toks)?;
+
+                command_or_error(
+                    input,
+                    &mut toks,
+                    Self {
+                        resolution: Resolution::Close,
+                        reversibility: Reversibility::Reversible,
+                        team,
+                    },
+                )
+            }
             _ => Ok(None),
         }
     }
@@ -125,6 +140,8 @@ pub enum Resolution {
     Merge,
     #[postgres(name = "hold")]
     Hold,
+    #[postgres(name = "close")]
+    Close,
 }
 
 impl fmt::Display for Resolution {
@@ -132,6 +149,7 @@ impl fmt::Display for Resolution {
         match self {
             Resolution::Merge => write!(f, "merge"),
             Resolution::Hold => write!(f, "hold"),
+            Resolution::Close => write!(f, "close"),
         }
     }
 }
@@ -175,6 +193,18 @@ mod tests {
             parse("hold"),
             Ok(Some(DecisionCommand {
                 resolution: Resolution::Hold,
+                reversibility: Reversibility::Reversible,
+                team: None
+            })),
+        );
+    }
+
+    #[test]
+    fn test_correct_close() {
+        assert_eq!(
+            parse("close"),
+            Ok(Some(DecisionCommand {
+                resolution: Resolution::Close,
                 reversibility: Reversibility::Reversible,
                 team: None
             })),

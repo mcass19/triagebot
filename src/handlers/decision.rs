@@ -202,6 +202,11 @@ mod tests {
             comment_id = "https://some-comment-id-for-hold.com".to_string(),
             resolution = Resolution::Hold
         }
+
+        mixin close {
+            comment_id = "https://some-comment-id-for-close.com".to_string(),
+            resolution = Resolution::Close
+        }
     });
 
     #[test]
@@ -211,7 +216,7 @@ mod tests {
 
         // user 1
         let mut user_1_statuses: Vec<UserStatus> = Vec::new();
-        user_1_statuses.push(create!(UserStatus));
+        user_1_statuses.push(create!(UserStatus, :close));
         user_1_statuses.push(create!(UserStatus, :hold));
 
         history.insert("Niklaus".to_string(), user_1_statuses);
@@ -221,7 +226,7 @@ mod tests {
         // user 2
         let mut user_2_statuses: Vec<UserStatus> = Vec::new();
         user_2_statuses.push(create!(UserStatus, :hold));
-        user_2_statuses.push(create!(UserStatus));
+        user_2_statuses.push(create!(UserStatus, :close));
 
         history.insert("Barbara".to_string(), user_2_statuses);
 
@@ -231,8 +236,8 @@ mod tests {
             .expect("it shouldn't fail building the message");
         let expected_comment = "| Team member | State |\n\
         |-------------|-------|\n\
-        | @Barbara | [~~hold~~](https://some-comment-id-for-hold.com)  [~~merge~~](https://some-comment-id-for-merge.com)  [**merge**](https://some-comment-id-for-merge.com) |\n\
-        | @Niklaus | [~~merge~~](https://some-comment-id-for-merge.com)  [~~hold~~](https://some-comment-id-for-hold.com)  [**merge**](https://some-comment-id-for-merge.com) |"
+        | @Barbara | [~~hold~~](https://some-comment-id-for-hold.com)  [~~close~~](https://some-comment-id-for-close.com)  [**merge**](https://some-comment-id-for-merge.com) |\n\
+        | @Niklaus | [~~close~~](https://some-comment-id-for-close.com)  [~~hold~~](https://some-comment-id-for-hold.com)  [**merge**](https://some-comment-id-for-merge.com) |"
             .to_string();
 
         assert_eq!(build_result, expected_comment);
