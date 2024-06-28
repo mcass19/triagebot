@@ -340,9 +340,6 @@ CREATE EXTENSION intarray;
 CREATE UNIQUE INDEX review_prefs_user_id ON review_prefs(user_id);
 ",
     "
-CREATE TYPE reversibility AS ENUM ('reversible', 'irreversible');
-",
-    "
 CREATE TYPE resolution AS ENUM ('hold', 'merge');
 ",
     "CREATE TABLE issue_decision_state (
@@ -352,7 +349,6 @@ CREATE TYPE resolution AS ENUM ('hold', 'merge');
     end_date TIMESTAMP WITH TIME ZONE NOT NULL,
     current JSONB NOT NULL,
     history JSONB,
-    reversibility reversibility NOT NULL DEFAULT 'reversible',
     resolution resolution NOT NULL DEFAULT 'merge'
 );",
 ];

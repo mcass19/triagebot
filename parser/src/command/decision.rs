@@ -1,8 +1,7 @@
 //! The decision process command parser.
 //!
 //! This can parse arbitrary input, giving the command with which we would like
-//! to vote that will potentially change the issue in its resolution,
-//! reversibility and/or more.
+//! to vote that will potentially change the issue in its resolution and more.
 //!
 //! In the first one, we must also assign a valid team to the issue decision process.
 //!
@@ -22,11 +21,10 @@ use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
 
 /// A command as parsed and received from calling the bot with some arguments,
-/// like `@rustbot merge`
+/// like `@bot merge`
 #[derive(Debug, Eq, PartialEq)]
 pub struct DecisionCommand {
     pub resolution: Resolution,
-    pub reversibility: Reversibility,
     pub team: Option<String>,
 }
 
@@ -45,7 +43,6 @@ impl DecisionCommand {
                     &mut toks,
                     Self {
                         resolution: Resolution::Merge,
-                        reversibility: Reversibility::Reversible,
                         team,
                     },
                 )
@@ -60,7 +57,6 @@ impl DecisionCommand {
                     &mut toks,
                     Self {
                         resolution: Resolution::Hold,
-                        reversibility: Reversibility::Reversible,
                         team,
                     },
                 )
@@ -110,15 +106,6 @@ impl fmt::Display for ParseError {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, ToSql, FromSql, Eq, PartialEq)]
-#[postgres(name = "reversibility")]
-pub enum Reversibility {
-    #[postgres(name = "reversible")]
-    Reversible,
-    #[postgres(name = "irreversible")]
-    Irreversible,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, ToSql, FromSql, Eq, PartialEq)]
 #[postgres(name = "resolution")]
 pub enum Resolution {
     #[postgres(name = "merge")]
@@ -151,7 +138,6 @@ mod tests {
             parse("merge"),
             Ok(Some(DecisionCommand {
                 resolution: Resolution::Merge,
-                reversibility: Reversibility::Reversible,
                 team: None
             })),
         );
@@ -163,7 +149,6 @@ mod tests {
             parse("merge."),
             Ok(Some(DecisionCommand {
                 resolution: Resolution::Merge,
-                reversibility: Reversibility::Reversible,
                 team: None
             })),
         );
@@ -175,7 +160,6 @@ mod tests {
             parse("hold"),
             Ok(Some(DecisionCommand {
                 resolution: Resolution::Hold,
-                reversibility: Reversibility::Reversible,
                 team: None
             })),
         );
@@ -200,7 +184,6 @@ mod tests {
             parse("merge lang"),
             Ok(Some(DecisionCommand {
                 resolution: Resolution::Merge,
-                reversibility: Reversibility::Reversible,
                 team: Some("lang".to_string())
             })),
         );
@@ -212,7 +195,6 @@ mod tests {
             parse("hold lang"),
             Ok(Some(DecisionCommand {
                 resolution: Resolution::Hold,
-                reversibility: Reversibility::Reversible,
                 team: Some("lang".to_string())
             })),
         );

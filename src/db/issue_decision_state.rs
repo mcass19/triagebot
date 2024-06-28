@@ -3,7 +3,7 @@
 
 use anyhow::{Context as _, Result};
 use chrono::{DateTime, Utc};
-use parser::command::decision::{Resolution, Reversibility};
+use parser::command::decision::Resolution;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use tokio_postgres::Client as DbClient;
@@ -16,7 +16,6 @@ pub struct IssueDecisionState {
     pub end_date: DateTime<Utc>,
     pub current: BTreeMap<String, Option<UserStatus>>,
     pub history: BTreeMap<String, Vec<UserStatus>>,
-    pub reversibility: Reversibility,
     pub resolution: Resolution,
 }
 
@@ -24,7 +23,6 @@ pub struct IssueDecisionState {
 pub struct UserStatus {
     pub comment_id: String,
     pub text: String,
-    pub reversibility: Reversibility,
     pub resolution: Resolution,
 }
 
@@ -36,16 +34,15 @@ pub async fn insert_issue_decision_state(
     end_date: &DateTime<Utc>,
     current: &BTreeMap<String, Option<UserStatus>>,
     history: &BTreeMap<String, Vec<UserStatus>>,
-    reversibility: &Reversibility,
     resolution: &Resolution,
 ) -> Result<()> {
     tracing::trace!("insert_issue_decision_state(issue_id={})", issue_number);
     let issue_id = *issue_number as i64;
 
     db.execute(
-        "INSERT INTO issue_decision_state (issue_id, initiator, start_date, end_date, current, history, reversibility, resolution) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+        "INSERT INTO issue_decision_state (issue_id, initiator, start_date, end_date, current, history, resolution) VALUES ($1, $2, $3, $4, $5, $6, $7)
             ON CONFLICT DO NOTHING",
-        &[&issue_id, &initiator, &start_date, &end_date, &serde_json::to_value(current).unwrap(), &serde_json::to_value(history).unwrap(), &reversibility, &resolution],
+        &[&issue_id, &initiator, &start_date, &end_date, &serde_json::to_value(current).unwrap(), &serde_json::to_value(history).unwrap(), &resolution],
     )
     .await
     .context("Inserting decision state")?;
@@ -59,14 +56,13 @@ pub async fn update_issue_decision_state(
     end_date: &DateTime<Utc>,
     current: &BTreeMap<String, UserStatus>,
     history: &BTreeMap<String, Vec<UserStatus>>,
-    reversibility: &Reversibility,
     resolution: &Resolution,
 ) -> Result<()> {
     tracing::trace!("update_issue_decision_state(issue_id={})", issue_number);
     let issue_id = *issue_number as i64;
 
-    db.execute("UPDATE issue_decision_state SET end_date = $2, current = $3, history = $4, reversibility = $5, resolution = $6 WHERE issue_id = $1", 
-        &[&issue_id, &end_date, &serde_json::to_value(current).unwrap(), &serde_json::to_value(history).unwrap(), &reversibility, &resolution]
+    db.execute("UPDATE issue_decision_state SET end_date = $2, current = $3, history = $4, resolution = $5 WHERE issue_id = $1",
+        &[&issue_id, &end_date, &serde_json::to_value(current).unwrap(), &serde_json::to_value(history).unwrap(), &resolution]
     )
     .await
     .context("Updating decision state")?;
@@ -101,8 +97,7 @@ fn deserialize_issue_decision_state(row: &tokio_postgres::row::Row) -> Result<Is
         serde_json::from_value(row.try_get(4).unwrap())?;
     let history: BTreeMap<String, Vec<UserStatus>> =
         serde_json::from_value(row.try_get(5).unwrap())?;
-    let reversibility: Reversibility = row.try_get(6)?;
-    let resolution: Resolution = row.try_get(7)?;
+    let resolution: Resolution = row.try_get(6)?;
 
     Ok(IssueDecisionState {
         issue_id,
@@ -111,7 +106,6 @@ fn deserialize_issue_decision_state(row: &tokio_postgres::row::Row) -> Result<Is
         end_date,
         current,
         history,
-        reversibility,
         resolution,
     })
 }
