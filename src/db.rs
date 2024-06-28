@@ -337,12 +337,15 @@ CREATE table review_prefs (
 );",
     "
 CREATE EXTENSION intarray;
+",
+    "
 CREATE UNIQUE INDEX review_prefs_user_id ON review_prefs(user_id);
 ",
     "
 CREATE TYPE resolution AS ENUM ('hold', 'merge');
 ",
-    "CREATE TABLE issue_decision_state (
+    "
+CREATE TABLE issue_decision_state (
     issue_id BIGINT PRIMARY KEY,
     initiator TEXT NOT NULL,
     start_date TIMESTAMP WITH TIME ZONE NOT NULL,
