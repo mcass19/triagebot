@@ -2228,7 +2228,7 @@ impl GithubClient {
         response.text().await.context("raw gist from url")
     }
 
-    fn get(&self, url: &str) -> RequestBuilder {
+    pub fn get(&self, url: &str) -> RequestBuilder {
         log::trace!("get {:?}", url);
         self.client.get(url).configure(self)
     }

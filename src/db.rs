@@ -8,6 +8,7 @@ use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use tokio_postgres::Client as DbClient;
 
 pub mod issue_data;
+pub mod issue_decision_state;
 pub mod jobs;
 pub mod notifications;
 pub mod rustc_commits;
@@ -335,8 +336,22 @@ CREATE table review_prefs (
     assigned_prs INT[] NOT NULL DEFAULT array[]::INT[]
 );",
     "
-CREATE EXTENSION IF NOT EXISTS intarray;",
+CREATE EXTENSION intarray;
+",
     "
-CREATE UNIQUE INDEX IF NOT EXISTS review_prefs_user_id ON review_prefs(user_id);
- ",
+CREATE UNIQUE INDEX review_prefs_user_id ON review_prefs(user_id);
+",
+    "
+CREATE TYPE resolution AS ENUM ('hold', 'merge');
+",
+    "
+CREATE TABLE issue_decision_state (
+    issue_id BIGINT PRIMARY KEY,
+    initiator TEXT NOT NULL,
+    start_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    end_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    current JSONB NOT NULL,
+    history JSONB,
+    resolution resolution NOT NULL DEFAULT 'merge'
+);",
 ];
