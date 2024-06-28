@@ -273,6 +273,9 @@ async fn handle_job(
     Ok(())
 }
 
+// Important notes when adding migrations:
+// - Each DB change is an element in this array and must be a single SQL instruction
+// - The total # of items in this array must be equal to the value of `database_versions.migration_counter`
 static MIGRATIONS: &[&str] = &[
     "
 CREATE TABLE notifications (

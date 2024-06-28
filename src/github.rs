@@ -31,8 +31,10 @@ impl GithubClient {
             .with_context(|| format!("building reqwest {}", req_dbg))?;
 
         let mut resp = self.client.execute(req.try_clone().unwrap()).await?;
-        if let Some(sleep) = Self::needs_retry(&resp).await {
-            resp = self.retry(req, sleep, MAX_ATTEMPTS).await?;
+        if self.retry_rate_limit {
+            if let Some(sleep) = Self::needs_retry(&resp).await {
+                resp = self.retry(req, sleep, MAX_ATTEMPTS).await?;
+            }
         }
         let maybe_err = resp.error_for_status_ref().err();
         let body = resp
@@ -51,19 +53,16 @@ impl GithubClient {
         const REMAINING: &str = "X-RateLimit-Remaining";
         const RESET: &str = "X-RateLimit-Reset";
 
-        if resp.status().is_success() {
+        if !matches!(
+            resp.status(),
+            StatusCode::FORBIDDEN | StatusCode::TOO_MANY_REQUESTS
+        ) {
             return None;
         }
 
         let headers = resp.headers();
         if !(headers.contains_key(REMAINING) && headers.contains_key(RESET)) {
             return None;
-        }
-
-        // Weird github api behavior. It asks us to retry but also has a remaining count above 1
-        // Try again immediately and hope for the best...
-        if headers[REMAINING] != "0" {
-            return Some(Duration::from_secs(0));
         }
 
         let reset_time = headers[RESET].to_str().unwrap().parse::<u64>().unwrap();
@@ -288,7 +287,7 @@ pub struct Issue {
     ///
     /// Example: `https://github.com/octocat/Hello-World/pull/1347`
     pub html_url: String,
-    // User performing an `action`
+    // User performing an `action` (or PR/issue author)
     pub user: User,
     pub labels: Vec<Label>,
     // Users assigned to the issue/pr after `action` has been performed
@@ -1331,6 +1330,19 @@ impl Repository {
                 .json(client.get(&url))
                 .await
                 .with_context(|| format!("failed to fetch commits for {url}"))?;
+            // This is a temporary debugging measure to investigate why the
+            // `/commits` endpoint is not returning the expected values in
+            // production.
+            let v: String = this_page
+                .iter()
+                .map(|commit| {
+                    format!(
+                        "({}, {}, {:?}) ",
+                        commit.sha, commit.commit.author.date, commit.parents
+                    )
+                })
+                .collect();
+            log::info!("page {page}: {v}");
             if let Some(idx) = this_page.iter().position(|commit| commit.sha == start) {
                 this_page.truncate(idx);
                 commits.extend(this_page);
@@ -1910,6 +1922,7 @@ impl<'q> IssuesQuery for Query<'q> {
                     .map(|u| u.login.as_ref())
                     .collect::<Vec<_>>()
                     .join(", "),
+                author: issue.user.login,
                 updated_at_hts: crate::actions::to_human(issue.updated_at),
                 fcp_details,
                 mcp_details,
@@ -2135,6 +2148,8 @@ pub struct GithubClient {
     api_url: String,
     graphql_url: String,
     raw_url: String,
+    /// If `true`, requests will sleep if it hits GitHub's rate limit.
+    retry_rate_limit: bool,
 }
 
 impl GithubClient {
@@ -2145,6 +2160,7 @@ impl GithubClient {
             api_url,
             graphql_url,
             raw_url,
+            retry_rate_limit: false,
         }
     }
 
@@ -2158,6 +2174,14 @@ impl GithubClient {
             std::env::var("GITHUB_RAW_URL")
                 .unwrap_or_else(|_| "https://raw.githubusercontent.com".to_string()),
         )
+    }
+
+    /// Sets whether or not this client will retry when it hits GitHub's rate limit.
+    ///
+    /// Just beware that the retry may take a long time (like 30 minutes,
+    /// depending on various factors).
+    pub fn set_retry_rate_limit(&mut self, retry: bool) {
+        self.retry_rate_limit = retry;
     }
 
     pub fn raw(&self) -> &Client {
@@ -2677,6 +2701,7 @@ impl IssuesQuery for LeastRecentlyReviewedPullRequests {
                     comments.last().map(|t| t.1).unwrap_or(pr.created_at),
                 );
                 let assignees = assignees.join(", ");
+                let author = pr.author.expect("checked");
 
                 Some((
                     updated_at,
@@ -2685,6 +2710,7 @@ impl IssuesQuery for LeastRecentlyReviewedPullRequests {
                     pr.url.0,
                     repository_name,
                     labels,
+                    author.login,
                     assignees,
                 ))
             })
@@ -2695,7 +2721,7 @@ impl IssuesQuery for LeastRecentlyReviewedPullRequests {
             .into_iter()
             .take(50)
             .map(
-                |(updated_at, number, title, html_url, repo_name, labels, assignees)| {
+                |(updated_at, number, title, html_url, repo_name, labels, author, assignees)| {
                     let updated_at_hts = crate::actions::to_human(updated_at);
 
                     crate::actions::IssueDecorator {
@@ -2704,6 +2730,7 @@ impl IssuesQuery for LeastRecentlyReviewedPullRequests {
                         html_url,
                         repo_name: repo_name.to_string(),
                         labels,
+                        author,
                         assignees,
                         updated_at_hts,
                         fcp_details: None,
@@ -2892,6 +2919,7 @@ impl IssuesQuery for DesignMeetings {
             .flat_map(|item| match item.content {
                 Some(ProjectV2ItemContent::Issue(issue)) => Some(crate::actions::IssueDecorator {
                     assignees: String::new(),
+                    author: String::new(),
                     number: issue.number.try_into().unwrap(),
                     fcp_details: None,
                     mcp_details: None,
