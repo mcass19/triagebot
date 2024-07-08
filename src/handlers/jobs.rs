@@ -56,25 +56,22 @@ async fn decision_process_handler(
     let request = gh_client.get(&metadata.get_issue_url);
 
     match gh_client.json::<Issue>(request).await {
-        Ok(issue) => match metadata.status {
-            Merge => {
-                let users: Vec<String> = get_issue_decision_state(&db, &issue.number)
-                    .await
-                    .unwrap()
-                    .current
-                    .into_keys()
-                    .collect();
-                let users_ref: Vec<&str> = users.iter().map(|x| x.as_ref()).collect();
+        Ok(issue) => {
+            let users: Vec<String> = get_issue_decision_state(&db, &issue.number)
+                .await
+                .unwrap()
+                .current
+                .into_keys()
+                .collect();
+            let users_ref: Vec<&str> = users.iter().map(|x| x.as_ref()).collect();
 
-                let cmnt = PingComment::new(
+            let cmnt = PingComment::new(
                     &issue,
                     &users_ref,
-                    "The final comment period has resolved, with a decision to **merge**. Ping involved once again.",
+                    format!("The final comment period has resolved, with a decision to **{}**. Ping involved people once again.", metadata.status),
                 );
-                cmnt.post(&gh_client).await?;
-            }
-            Hold => issue.close(&gh_client).await?,
-        },
+            cmnt.post(&gh_client).await?;
+        }
         Err(e) => log::error!(
             "Failed to get issue {}, error: {}",
             metadata.get_issue_url,
