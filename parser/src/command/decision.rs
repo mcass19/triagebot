@@ -61,6 +61,21 @@ impl DecisionCommand {
                     },
                 )
             }
+            // There's already a close command, so let's use another here for now.
+            Some(Token::Word("close_vote")) => {
+                toks.next_token()?;
+
+                let team: Option<String> = get_team(&mut toks)?;
+
+                command_or_error(
+                    input,
+                    &mut toks,
+                    Self {
+                        resolution: Resolution::Close,
+                        team,
+                    },
+                )
+            }
             _ => Ok(None),
         }
     }
@@ -112,6 +127,8 @@ pub enum Resolution {
     Merge,
     #[postgres(name = "hold")]
     Hold,
+    #[postgres(name = "close")]
+    Close,
 }
 
 impl fmt::Display for Resolution {
@@ -119,6 +136,7 @@ impl fmt::Display for Resolution {
         match self {
             Resolution::Merge => write!(f, "merge"),
             Resolution::Hold => write!(f, "hold"),
+            Resolution::Close => write!(f, "close"),
         }
     }
 }
@@ -166,6 +184,17 @@ mod tests {
     }
 
     #[test]
+    fn test_correct_close() {
+        assert_eq!(
+            parse("close_vote"),
+            Ok(Some(DecisionCommand {
+                resolution: Resolution::Close,
+                team: None
+            })),
+        );
+    }
+
+    #[test]
     fn test_expected_end() {
         use std::error::Error;
         assert_eq!(
@@ -195,6 +224,17 @@ mod tests {
             parse("hold lang"),
             Ok(Some(DecisionCommand {
                 resolution: Resolution::Hold,
+                team: Some("lang".to_string())
+            })),
+        );
+    }
+
+    #[test]
+    fn test_correct_close_with_team() {
+        assert_eq!(
+            parse("close_vote lang"),
+            Ok(Some(DecisionCommand {
+                resolution: Resolution::Close,
                 team: Some("lang".to_string())
             })),
         );

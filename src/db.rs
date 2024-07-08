@@ -347,7 +347,7 @@ CREATE EXTENSION intarray;
 CREATE UNIQUE INDEX review_prefs_user_id ON review_prefs(user_id);
 ",
     "
-CREATE TYPE resolution AS ENUM ('hold', 'merge');
+CREATE TYPE resolution AS ENUM ('hold', 'merge', 'close');
 ",
     "
 CREATE TABLE issue_decision_state (
