@@ -128,7 +128,18 @@ pub(super) async fn handle_command(
                             issue
                                 .post_comment(&ctx.github, &comment)
                                 .await
-                                .context("merge vote comment")?;
+                                .context("post vote comment")?;
+
+                            issue
+                                .add_labels(
+                                    &ctx.github,
+                                    vec![github::Label {
+                                        name: format!("{}", resolution), // TODO: what are the
+                                                                         // correct label names?
+                                    }],
+                                )
+                                .await
+                                .context("apply label")?;
 
                             Ok(())
                         }
