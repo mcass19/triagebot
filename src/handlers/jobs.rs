@@ -17,7 +17,12 @@ pub async fn handle_job(
             super::rustc_commits::synchronize_commits_inner(ctx, None).await;
             Ok(())
         }
-        _ => default(name, &metadata),
+        "decision_process_action" => {
+            super::decision::DecisionProcessJob
+                .run(ctx, &metadata)
+                .await
+        }
+        _ => default(&name, &metadata),
     }
 }
 

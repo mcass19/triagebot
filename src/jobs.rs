@@ -48,7 +48,10 @@ use cron::Schedule;
 
 use crate::{
     db::jobs::JobSchedule,
-    handlers::{docs_update::DocsUpdateJob, rustc_commits::RustcCommitsJob, Context},
+    handlers::{
+        decision::DecisionProcessJob, docs_update::DocsUpdateJob, rustc_commits::RustcCommitsJob,
+        Context,
+    },
 };
 
 /// How often new cron-based jobs will be placed in the queue.
@@ -61,7 +64,11 @@ pub const JOB_PROCESSING_CADENCE_IN_SECS: u64 = 60;
 
 // The default jobs list that are currently scheduled to run
 pub fn jobs() -> Vec<Box<dyn Job + Send + Sync>> {
-    vec![Box::new(DocsUpdateJob), Box::new(RustcCommitsJob)]
+    vec![
+        Box::new(DocsUpdateJob),
+        Box::new(RustcCommitsJob),
+        Box::new(DecisionProcessJob),
+    ]
 }
 
 // Definition of the schedule repetition for the jobs we want to run.

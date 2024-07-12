@@ -428,7 +428,7 @@ impl fmt::Display for IssueRepository {
 }
 
 impl IssueRepository {
-    fn url(&self, client: &GithubClient) -> String {
+    pub fn url(&self, client: &GithubClient) -> String {
         format!(
             "{}/repos/{}/{}",
             client.api_url, self.organization, self.repository
@@ -2242,7 +2242,7 @@ impl GithubClient {
         response.text().await.context("raw gist from url")
     }
 
-    fn get(&self, url: &str) -> RequestBuilder {
+    pub fn get(&self, url: &str) -> RequestBuilder {
         log::trace!("get {:?}", url);
         self.client.get(url).configure(self)
     }
