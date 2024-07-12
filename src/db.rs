@@ -341,10 +341,10 @@ CREATE table review_prefs (
     assigned_prs INT[] NOT NULL DEFAULT array[]::INT[]
 );",
     "
-CREATE EXTENSION intarray;
+CREATE EXTENSION IF NOT EXISTS intarray;
 ",
     "
-CREATE UNIQUE INDEX review_prefs_user_id ON review_prefs(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS review_prefs_user_id ON review_prefs(user_id);
 ",
     "
 CREATE TYPE resolution AS ENUM ('hold', 'merge', 'close');

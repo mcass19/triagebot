@@ -428,7 +428,7 @@ impl fmt::Display for IssueRepository {
 }
 
 impl IssueRepository {
-    fn url(&self, client: &GithubClient) -> String {
+    pub fn url(&self, client: &GithubClient) -> String {
         format!(
             "{}/repos/{}/{}",
             client.api_url, self.organization, self.repository

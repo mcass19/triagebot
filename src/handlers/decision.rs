@@ -1,17 +1,22 @@
+use crate::db::jobs::insert_job;
 use crate::github;
+use crate::jobs::Job;
 use crate::{
-    config::DecisionConfig, db::issue_decision_state::*, github::Event, handlers::Context,
-    interactions::ErrorComment,
+    config::DecisionConfig,
+    db::issue_decision_state::*,
+    github::*,
+    handlers::Context,
+    interactions::{ErrorComment, PingComment},
 };
 use anyhow::bail;
 use anyhow::Context as Ctx;
+use async_trait::async_trait;
 use chrono::{DateTime, Duration, Utc};
 use parser::command::decision::Resolution;
 use parser::command::decision::*;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-
-pub const _DECISION_PROCESS_JOB_NAME: &str = "decision_process_action";
+use tracing as log;
 
 #[derive(Serialize, Deserialize)]
 pub struct DecisionProcessActionMetadata {
@@ -110,19 +115,19 @@ pub(super) async fn handle_command(
                             .await?;
 
                             // TO DO -- Do not insert this job until we support more votes
-                            // let metadata = serde_json::value::to_value(DecisionProcessActionMetadata {
-                            //     message: "some message".to_string(),
-                            //     get_issue_url: format!("{}/issues/{}", issue.repository().url(), issue.number),
-                            //     status: resolution,
-                            // })
-                            // .unwrap();
-                            // insert_job(
-                            //     &db,
-                            //     &DECISION_PROCESS_JOB_NAME.to_string(),
-                            //     &end_date,
-                            //     &metadata,
-                            // )
-                            // .await?;
+                            let metadata =
+                                serde_json::value::to_value(DecisionProcessActionMetadata {
+                                    message: "some message".to_string(),
+                                    get_issue_url: format!(
+                                        "{}/issues/{}",
+                                        issue.repository().url(&ctx.github),
+                                        issue.number
+                                    ),
+                                    status: resolution,
+                                })
+                                .unwrap();
+                            insert_job(&db, &DecisionProcessJob.name(), &end_date, &metadata)
+                                .await?;
 
                             let comment = build_status_comment(&history, &current)?;
                             issue
@@ -190,6 +195,53 @@ fn build_status_comment(
     }
 
     Ok(comment)
+}
+
+pub struct DecisionProcessJob;
+
+#[async_trait]
+impl Job for DecisionProcessJob {
+    fn name(&self) -> &'static str {
+        "decision_process_action"
+    }
+
+    async fn run(&self, ctx: &super::Context, metadata: &serde_json::Value) -> anyhow::Result<()> {
+        tracing::trace!(
+            "handle_job fell into decision process case: (metadata={:?})",
+            metadata
+        );
+
+        let db = ctx.db.get().await;
+        let metadata: DecisionProcessActionMetadata = serde_json::from_value(metadata.clone())?;
+        let gh_client = github::GithubClient::new_from_env();
+        let request = gh_client.get(&metadata.get_issue_url);
+
+        match gh_client.json::<Issue>(request).await {
+            Ok(issue) => {
+                let users: Vec<String> = get_issue_decision_state(&db, &issue.number)
+                    .await
+                    .unwrap()
+                    .current
+                    .into_keys()
+                    .collect();
+                let users_ref: Vec<&str> = users.iter().map(|x| x.as_ref()).collect();
+
+                let cmnt = PingComment::new(
+                    &issue,
+                    &users_ref,
+                    format!("The final comment period has resolved, with a decision to **{}**. Ping involved people once again.", metadata.status),
+                );
+                cmnt.post(&gh_client).await?;
+            }
+            Err(e) => log::error!(
+                "Failed to get issue {}, error: {}",
+                metadata.get_issue_url,
+                e
+            ),
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
